@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atomise Le Daron à TibZ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Chelsea+Market&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Chelsea Market', cursive;
+      background-color: #2c2f33;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+      cursor: url('https://cdn4.iconfinder.com/data/icons/interface-tools-vol-2-glyph/48/Sed-27-512.png'), auto;
+    }
+
+    .game-container {
+      display: flex;
+      align-items: flex-start;
+      flex-direction: row; /* Changez la direction pour aligner l'inventaire à droite */
+      position: relative;
+    }
+
+    .title {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+
+    .monster {
+      width: 400px;
+      height: 400px;
+      background: url('https://i.ibb.co/NSX7nHB/alcohol-intoxication-character-clip-art-drunk-removebg-preview.png') no-repeat center center / contain;
+      cursor: url('https://cdn4.iconfinder.com/data/icons/interface-tools-vol-2-glyph/48/Sed-27-512.png'), pointer;
+      margin-bottom: 20px;
+      position: relative;
+      transition: transform 0.2s;
+    }
+
+    .blood-splash {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 400px;
+      height: 400px;
+      background: url('https://www.freeiconspng.com/thumbs/blood-png/blood-png-1.png') no-repeat center center / contain;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .monster.click-effect .blood-splash {
+      opacity: 1;
+    }
+
+    .monster.explode {
+      animation: explode 0.5s ease-out forwards;
+    }
+
+    @keyframes explode {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 0.5; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+
+    .score-board {
+      margin-top: 10px;
+      font-size: 1.2em;
+      color: #99aab5;
+    }
+
+    .inventory {
+      margin-left: 20px; /* Ajout d'un espacement à gauche */
+      padding: 10px;
+      background-color: #23272a;
+      border-radius: 8px;
+      width: 250px;
+      height: 300px; /* Hauteur fixe pour l'inventaire */
+      overflow-y: auto; /* Permet le défilement si le contenu dépasse la hauteur */
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .inventory-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1em;
+    }
+
+    .inventory-item img {
+      width: 24px;
+      height: 24px;
+    }
+
+    .victory-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 3em;
+      opacity: 0;
+      animation: showMessage 1s forwards;
+    }
+
+    @keyframes showMessage {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .description {
+      margin-left: 20px;
+      font-size: 1.2em;
+      background-color: #23272a;
+      padding: 15px;
+      border-radius: 8px;
+      max-width: 250px;
+    }
+
+    .description .header {
+      font-size: 1.5em;
+      color: #ffffff;
+      margin-bottom: 10px;
+    }
+
+    .description .content {
+      color: #99aab5;
+    }
+
+    .restart-button {
+      margin-top: 20px; /* Espacement entre le message et le bouton */
+      padding: 10px 20px;
+      font-size: 1.2em;
+      background-color: #7289da;
+      border: none;
+      border-radius: 5px;
+      color: #ffffff;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    .restart-button:hover {
+      background-color: #5b6eae;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="game-content">
+      <div class="title">Le Daron à TibZ</div>
+      <div id="monster" class="monster">
+        <div class="blood-splash"></div>
+      </div>
+      <div class="score-board">Score : <span id="score">0</span> | Multiplicateur : x<span id="multiplier">1</span></div>
+    </div>
+
+    <div class="inventory">Inventaire :</div> <!-- Déplacé l'inventaire ici -->
+
+    <!-- Son de punch -->
+    <audio id="punch-sound" src="https://cdn.pixabay.com/audio/2023/02/22/audio_d7a43e9b3b.mp3"></audio>
+    
+    <audio id="background-music" src="URL_DE_VOTRE_MUSIQUE.mp3" autoplay loop></audio>
+	
+    <!-- Son d'explosion -->
+    <audio id="explosion-sound" src="https://www.myinstants.com/media/sounds/tmp_7901-951678082.mp3"></audio>
+    
+    <script>
+      let score = 0;
+      let clickPower = 1;
+      let multiplier = 1;
+      let lastClickTime = 0;
+      const scoreDisplay = document.getElementById("score");
+      const multiplierDisplay = document.getElementById("multiplier");
+      const monster = document.getElementById("monster");
+      const bloodSplash = document.querySelector(".blood-splash");
+      const inventory = document.querySelector(".inventory");
+      const punchSound = document.getElementById("punch-sound");
+      const explosionSound = document.getElementById("explosion-sound");
+
+      punchSound.volume = 0.1; // Volume à 10%
+      explosionSound.volume = 0.2; // Volume à 20%
+
+      const items = [
+        { name: "Chaussette", power: 1, icon: "https://png.pngtree.com/png-vector/20220518/ourmid/pngtree-dirty-sock-icon-color-flat-png-image_4694601.png" },
+        { name: "Tournevis", power: 2, icon: "https://cdn-icons-png.flaticon.com/512/4287/4287884.png" },
+        { name: "Banane", power: 3, icon: "https://images.vexels.com/media/users/3/143061/isolated/lists/aaf71ed4e387a6838e1c521fbecde77a-banana-icon-fruit.png" },
+        { name: "Massue", power: 4, icon: "https://media.fortniteapi.io/images/081600676f0a2ac62e8db6b2aa93a519/transparent.png" },
+        { name: "Gant de Boxe", power: 5, icon: "https://cdn-icons-png.flaticon.com/512/5022/5022167.png" },
+        { name: "Dildo", power: 6, icon: "https://cdn-icons-png.flaticon.com/512/4648/4648629.png" }
+      ];
+
+      // Fonction de clic sur le monstre
+      monster.onclick = () => {
+        playPunchSound();
+        activateBloodSplash();
+        updateMultiplier();
+        score += clickPower * multiplier;
+        scoreDisplay.innerText = score;
+        multiplierDisplay.innerText = multiplier;
+        unlockItem();
+
+        if (score >= 10000) {
+          explodeMonster();
+        }
+      };
+
+      // Fonction pour jouer le son de punch
+      function playPunchSound() {
+        punchSound.currentTime = 0;
+        punchSound.play();
+      }
+
+      // Fonction pour activer l'effet de sang
+      function activateBloodSplash() {
+        monster.classList.add("click-effect");
+        setTimeout(() => {
+          monster.classList.remove("click-effect");
+        }, 300); // Retire l'effet après 300ms
+      }
+
+      // Fonction pour mettre à jour le multiplicateur
+      function updateMultiplier() {
+        const currentTime = Date.now();
+        if (currentTime - lastClickTime < 500) {
+          multiplier++;
+        } else {
+          multiplier = 1;
+        }
+        lastClickTime = currentTime;
+      }
+
+      // Fonction pour faire exploser le monstre
+      function explodeMonster() {
+        explosionSound.play();
+        monster.classList.add("explode");
+        showVictoryMessage();
+      }
+
+      // Fonction pour afficher le message de victoire
+      function showVictoryMessage() {
+        const victoryContainer = document.createElement("div");
+        victoryContainer.className = "victory-container";
+        victoryContainer.innerHTML = `
+          <div class="victory-message">Tu as atomisé le daron de TibZ !</div>
+          <button id="restart-button" class="restart-button">Recommencer</button>
+        `;
+        document.body.appendChild(victoryContainer);
+
+        const restartButton = document.getElementById("restart-button");
+        restartButton.onclick = () => {
+          restartGame();
+        };
+      }
+
+      // Fonction pour redémarrer le jeu
+      function restartGame() {
+        score = 0;
+        clickPower = 1;
+        multiplier = 1;
+        scoreDisplay.innerText = score;
+        multiplierDisplay.innerText = multiplier;
+        inventory.innerHTML = "Inventaire :"; // Réinitialise l'inventaire
+        monster.classList.remove("explode"); // Enlève l'animation d'explosion
+
+        // Enlève le message de victoire
+        const victoryMessage = document.querySelector(".victory-container");
+        if (victoryMessage) {
+          victoryMessage.remove();
+        }
+      }
+
+      // Fonction pour débloquer un objet tous les 100 points
+      function unlockItem() {
+        const itemIndex = Math.floor(score / 100) - 1;
+        if (itemIndex >= 0 && itemIndex < items.length && !inventory.querySelector(`[data-item="${itemIndex}"]`)) {
+          clickPower += items[itemIndex].power;
+          const item = document.createElement("div");
+          item.className = "inventory-item";
+          item.dataset.item = itemIndex;
+          item.innerHTML = `<img src="${items[itemIndex].icon}" alt="${items[itemIndex].name}"> Débloqué: ${items[itemIndex].name} (+${items[itemIndex].power})`;
+          inventory.appendChild(item);
+        }
+      }
+    </script>
+  </div>
+</body>
+</html>
